@@ -1,0 +1,11 @@
+mangoDB Atlas
+username : zainabbasheer278_db_user
+pswd    :C2ccbiMakEdeZJEJ
+
+
+database string : mongodb+srv://zainabbasheer278_db_user:C2ccbimakEdeZJEJ@cluster0.xxxxx.mongodb.net/library
+
+not updated : mongodb+srv://zainabbasheer278_db_user:C2ccbiMakEdeZJEJ@cluster0.wgof9mt.mongodb.net/?appName=Cluster0
+
+
+final connection string : mongodb+srv://zainabbasheer278_db_user:<C2ccbiMakEdeZJEJ>@cluster0.wgof9mt.mongodb.net/library
