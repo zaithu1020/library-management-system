@@ -11,8 +11,6 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import API_URL from './config';
 
-
-
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [books, setBooks] = useState([]);
@@ -110,7 +108,7 @@ function App() {
     }
   }, [transactions, books, members]);
 
-  // API Calls - UPDATED with API_URL
+  // API Calls
   const fetchBooks = async () => {
     try {
       const res = await axios.get(`${API_URL}/books`);
@@ -999,7 +997,7 @@ function App() {
                   </tr>
                 }
               </tbody>
-            </tr>
+            </table>
           </div>
         </div>
       )}
@@ -1043,6 +1041,7 @@ function App() {
           </div>
           <h2>Members List</h2>
           <div className="table-container">
+
             <table>
               <thead>
                 <tr>
@@ -1227,16 +1226,16 @@ function App() {
       )}
 
       {/* User Management Modal */}
-    {showUserManagement && (
-      <div className="modal-overlay">
-        <div className="modal-content large">
-          <h2>Manage Users</h2>
-          <div className="add-user-form"><h3>Add New User</h3><form onSubmit={handleAddUser}><input type="text" placeholder="Username" value={newUserData.username} onChange={(e) => setNewUserData({ ...newUserData, username: e.target.value })} required /><input type="password" placeholder="Password" value={newUserData.password} onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })} required /><select value={newUserData.role} onChange={(e) => setNewUserData({ ...newUserData, role: e.target.value })}><option value="Librarian">Librarian</option><option value="Administrator">Administrator</option></select><button type="submit">Add User</button></form></div>
-          <div className="users-list"><h3>Current Users</h3><table><thead><tr><th>Username</th><th>Role</th><th>Actions</th></tr></thead><tbody>{users.map(user => (<tr key={user.id}><td>{user.username}</td><td>{user.role}</td><td>{users.length > 1 && <button className="delete-btn" onClick={() => handleDeleteUser(user.id)}>Delete</button>}</td></tr>))}</tbody></table></div>
-          <div className="modal-actions"><button className="btn-secondary" onClick={() => setShowUserManagement(false)}>Close</button></div>
+      {showUserManagement && (
+        <div className="modal-overlay">
+          <div className="modal-content large">
+            <h2>Manage Users</h2>
+            <div className="add-user-form"><h3>Add New User</h3><form onSubmit={handleAddUser}><input type="text" placeholder="Username" value={newUserData.username} onChange={(e) => setNewUserData({...newUserData, username: e.target.value})} required /><input type="password" placeholder="Password" value={newUserData.password} onChange={(e) => setNewUserData({...newUserData, password: e.target.value})} required /><select value={newUserData.role} onChange={(e) => setNewUserData({...newUserData, role: e.target.value})}><option value="Librarian">Librarian</option><option value="Administrator">Administrator</option></select><button type="submit">Add User</button></form></div>
+            <div className="users-list"><h3>Current Users</h3><table><thead><tr><th>Username</th><th>Role</th><th>Actions</th></tr></thead><tbody>{users.map(user => (<tr key={user.id}><td>{user.username}</td><td>{user.role}</td><td>{users.length > 1 && <button className="delete-btn" onClick={() => handleDeleteUser(user.id)}>Delete</button>}</td></tr>))}</tbody></table></div>
+            <div className="modal-actions"><button className="btn-secondary" onClick={() => setShowUserManagement(false)}>Close</button></div>
+          </div>
         </div>
-      </div>
-    )}
+      )}
     </div>
   );
 }
