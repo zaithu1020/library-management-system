@@ -2,44 +2,36 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const dotenv = require('dotenv');
-
-// Import routes
-const bookRoutes = require('./routes/books');
-const memberRoutes = require('./routes/members');
-const transactionRoutes = require('./routes/transactions');
-
-dotenv.config();
+require('dotenv').config();
 
 const app = express();
-
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection
-mongoose.connect('mongodb://127.0.0.1:27017/library')
-  .then(() => console.log('✅ Connected to MongoDB successfully!'))
-  .catch(err => {
-    console.error('❌ MongoDB connection error:', err);
-    process.exit(1);
-  });
-
-// Use routes
-app.use('/api/books', bookRoutes);
-app.use('/api/members', memberRoutes);
-app.use('/api/transactions', transactionRoutes);
-
-// Test route
+// Simple test route
 app.get('/api/test', (req, res) => {
   res.json({ 
-    message: 'Server is working!',
-    timestamp: new Date(),
-    mongoStatus: 'Connected'
+    message: 'Server is working!', 
+    time: new Date(),
+    mongoStatus: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
   });
 });
 
-const PORT = 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+app.get('/', (req, res) => {
+  res.json({ message: 'Library Management System API is running!' });
+});
+
+// MongoDB Connection (only if MONGODB_URI is provided)
+const MONGODB_URI = process.env.MONGODB_URI;
+if (MONGODB_URI) {
+  mongoose.connect(MONGODB_URI)
+    .then(() => console.log('✅ MongoDB Connected'))
+    .catch(err => console.error('❌ MongoDB Error:', err.message));
+} else {
+  console.log('⚠️ No MONGODB_URI provided, running without database');
+}
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
