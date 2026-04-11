@@ -9,6 +9,9 @@ import Dashboard from './Dashboard';
 import logo from './assets/institute-logo.png';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import API_URL from './config';
+
+
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -107,10 +110,10 @@ function App() {
     }
   }, [transactions, books, members]);
 
-  // API Calls
+  // API Calls - UPDATED with API_URL
   const fetchBooks = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/books');
+      const res = await axios.get(`${API_URL}/books`);
       setBooks(res.data);
       setSearchResults(res.data);
     } catch (error) {
@@ -120,7 +123,7 @@ function App() {
 
   const fetchMembers = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/members');
+      const res = await axios.get(`${API_URL}/members`);
       setMembers(res.data);
     } catch (error) {
       console.error('Error fetching members:', error);
@@ -129,7 +132,7 @@ function App() {
 
   const fetchTransactions = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/transactions');
+      const res = await axios.get(`${API_URL}/transactions`);
       setTransactions(res.data);
     } catch (error) {
       console.error('Error fetching transactions:', error);
@@ -683,13 +686,13 @@ function App() {
         
         if (backupData.books) {
           for (const book of backupData.books) {
-            try { await axios.post('http://localhost:5000/api/books', book); } catch (e) {}
+            try { await axios.post(`${API_URL}/books`, book); } catch (e) {}
           }
         }
         
         if (backupData.members) {
           for (const member of backupData.members) {
-            try { await axios.post('http://localhost:5000/api/members', member); } catch (e) {}
+            try { await axios.post(`${API_URL}/members`, member); } catch (e) {}
           }
         }
         
@@ -724,7 +727,7 @@ function App() {
     e.preventDefault();
     try {
       setLoading(true);
-      await axios.put(`http://localhost:5000/api/books/${editingBook._id}`, formData);
+      await axios.put(`${API_URL}/books/${editingBook._id}`, formData);
       alert('Book updated successfully!');
       setEditingBook(null);
       setFormData({});
@@ -745,7 +748,7 @@ function App() {
     e.preventDefault();
     try {
       setLoading(true);
-      await axios.post('http://localhost:5000/api/books', formData);
+      await axios.post(`${API_URL}/books`, formData);
       alert('Book added successfully!');
       setFormData({});
       fetchBooks();
@@ -759,7 +762,7 @@ function App() {
   const deleteBook = async (id) => {
     if (!window.confirm('Are you sure?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/books/${id}`);
+      await axios.delete(`${API_URL}/books/${id}`);
       alert('Book deleted!');
       fetchBooks();
     } catch (error) {
@@ -777,7 +780,7 @@ function App() {
       const prefix = memberType === 'Student' ? 'STU' : 'TCH';
       const memberId = `${prefix}${String(typeCount + 1).padStart(3, '0')}`;
       const memberData = { ...formData, memberId: memberId, membershipType: memberType };
-      await axios.post('http://localhost:5000/api/members', memberData);
+      await axios.post(`${API_URL}/members`, memberData);
       alert('Member added successfully!');
       setFormData({});
       fetchMembers();
@@ -806,7 +809,7 @@ function App() {
     e.preventDefault();
     try {
       setLoading(true);
-      await axios.put(`http://localhost:5000/api/members/${editingMember._id}`, { ...formData, membershipType: memberType });
+      await axios.put(`${API_URL}/members/${editingMember._id}`, { ...formData, membershipType: memberType });
       alert('Member updated successfully!');
       setEditingMember(null);
       setFormData({});
@@ -826,7 +829,7 @@ function App() {
   const deleteMember = async (id) => {
     if (!window.confirm('Are you sure?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/members/${id}`);
+      await axios.delete(`${API_URL}/members/${id}`);
       alert('Member deleted!');
       fetchMembers();
     } catch (error) {
@@ -851,7 +854,7 @@ function App() {
       dueDate.setDate(issueDate.getDate() + 3);
       const dueDateTime = dueDate.toISOString().split('T')[0] + 'T17:00:00';
       
-      await axios.post('http://localhost:5000/api/transactions/issue', {
+      await axios.post(`${API_URL}/transactions/issue`, {
         bookId: formData.bookId,
         memberId: formData.memberId,
         dueDate: dueDateTime
@@ -875,7 +878,7 @@ function App() {
         const payFine = window.confirm(`Fine amount: Rs. ${fine}. Mark as paid?`);
         if (!payFine) return;
       }
-      await axios.post(`http://localhost:5000/api/transactions/return/${id}`);
+      await axios.post(`${API_URL}/transactions/return/${id}`);
       alert(`Book returned successfully!${fine > 0 ? ` Fine paid: Rs. ${fine}` : ''}`);
       fetchBooks();
       fetchTransactions();
@@ -996,7 +999,7 @@ function App() {
                   </tr>
                 }
               </tbody>
-            </table>
+            </tr>
           </div>
         </div>
       )}
@@ -1224,16 +1227,16 @@ function App() {
       )}
 
       {/* User Management Modal */}
-      {showUserManagement && (
-        <div className="modal-overlay">
-          <div className="modal-content large">
-            <h2>Manage Users</h2>
-            <div className="add-user-form"><h3>Add New User</h3><form onSubmit={handleAddUser}><input type="text" placeholder="Username" value={newUserData.username} onChange={(e) => setNewUserData({...newUserData, username: e.target.value})} required /><input type="password" placeholder="Password" value={newUserData.password} onChange={(e) => setNewUserData({...newUserData, password: e.target.value})} required /><select value={newUserData.role} onChange={(e) => setNewUserData({...newUserData, role: e.target.value})}><option value="Librarian">Librarian</option><option value="Administrator">Administrator</option></select><button type="submit">Add User</button></form></div>
-            <div className="users-list"><h3>Current Users</h3><table><thead><tr><th>Username</th><th>Role</th><th>Actions</th></tr></thead><tbody>{users.map(user => (<tr key={user.id}><td>{user.username}</td><td>{user.role}</td><td>{users.length > 1 && <button className="delete-btn" onClick={() => handleDeleteUser(user.id)}>Delete</button>}</td></tr>))}</tbody></table></div>
-            <div className="modal-actions"><button className="btn-secondary" onClick={() => setShowUserManagement(false)}>Close</button></div>
-          </div>
+    {showUserManagement && (
+      <div className="modal-overlay">
+        <div className="modal-content large">
+          <h2>Manage Users</h2>
+          <div className="add-user-form"><h3>Add New User</h3><form onSubmit={handleAddUser}><input type="text" placeholder="Username" value={newUserData.username} onChange={(e) => setNewUserData({ ...newUserData, username: e.target.value })} required /><input type="password" placeholder="Password" value={newUserData.password} onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })} required /><select value={newUserData.role} onChange={(e) => setNewUserData({ ...newUserData, role: e.target.value })}><option value="Librarian">Librarian</option><option value="Administrator">Administrator</option></select><button type="submit">Add User</button></form></div>
+          <div className="users-list"><h3>Current Users</h3><table><thead><tr><th>Username</th><th>Role</th><th>Actions</th></tr></thead><tbody>{users.map(user => (<tr key={user.id}><td>{user.username}</td><td>{user.role}</td><td>{users.length > 1 && <button className="delete-btn" onClick={() => handleDeleteUser(user.id)}>Delete</button>}</td></tr>))}</tbody></table></div>
+          <div className="modal-actions"><button className="btn-secondary" onClick={() => setShowUserManagement(false)}>Close</button></div>
         </div>
-      )}
+      </div>
+    )}
     </div>
   );
 }
