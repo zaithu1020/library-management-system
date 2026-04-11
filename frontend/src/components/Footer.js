@@ -18,8 +18,7 @@ const Footer = () => {
             <p>📍 Assalihah Ladies Arabic College</p>
             <p>🏪 New Bakka taste shop</p>
             <p>📞 +94 67 226 0343</p>
-          
-               <a 
+            <a 
               href="https://assalihath.com/" 
               className="social-link"
               target="_blank"
@@ -86,8 +85,8 @@ const Footer = () => {
             <div className="map-links">
               <span>Keyboard shortcuts</span>
               <span>Map data ©{currentYear}</span>
-              <a href="#" className="map-link">Terms</a>
-              <a href="#" className="map-link">Report a map error</a>
+              <button className="map-link-btn">Terms</button>
+              <button className="map-link-btn">Report a map error</button>
             </div>
           </div>
         </div>
@@ -101,12 +100,11 @@ const Footer = () => {
             Developed by{' '}
             <strong>Zainab Thuqa Basheer</strong>{' '}
             — Full‑Stack MERN Developer{' '}
-          <span className="dev-contact">
-  | For contact: <a href="https://wa.me/94787788342" className="contact-link" target="_blank" rel="noopener noreferrer">078 778 8342 (WA)</a>
-</span>
+            <span className="dev-contact">
+              | For contact: <a href="https://wa.me/94787788342" className="contact-link" target="_blank" rel="noopener noreferrer">078 778 8342 (WA)</a>
+            </span>
           </p>
         </div>
-       
       </div>
     </footer>
   );
