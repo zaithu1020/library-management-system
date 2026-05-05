@@ -30,7 +30,7 @@ router.get('/member/:memberId', async (req, res) => {
   }
 });
 
-// POST issue book
+// POST issue book - FIXED: Always creates a NEW transaction
 router.post('/issue', async (req, res) => {
   try {
     const { bookId, memberId, dueDate } = req.body;
@@ -55,29 +55,36 @@ router.post('/issue', async (req, res) => {
       return res.status(400).json({ message: 'Member account is not active' });
     }
     
-    // Create transaction
+    // ALWAYS CREATE A NEW TRANSACTION - DO NOT UPDATE EXISTING
     const transaction = new Transaction({
       book: bookId,
       member: memberId,
-      dueDate: new Date(dueDate)
+      dueDate: new Date(dueDate),
+      issueDate: new Date(),
+      status: 'Issued',
+      fine: 0
     });
     
     // Update book availability
     book.available -= 1;
     await book.save();
-    await transaction.save();
     
-    const populatedTransaction = await Transaction.findById(transaction._id)
+    // Save the new transaction
+    const savedTransaction = await transaction.save();
+    
+    // Populate the transaction with book and member details
+    const populatedTransaction = await Transaction.findById(savedTransaction._id)
       .populate('book')
       .populate('member');
     
     res.status(201).json(populatedTransaction);
   } catch (error) {
+    console.error('Issue error:', error);
     res.status(400).json({ message: error.message });
   }
 });
 
-// POST return book
+// POST return book - UPDATES the specific transaction
 router.post('/return/:id', async (req, res) => {
   try {
     const transaction = await Transaction.findById(req.params.id);
@@ -89,14 +96,17 @@ router.post('/return/:id', async (req, res) => {
       return res.status(400).json({ message: 'Book already returned' });
     }
     
-    // Update transaction
+    // Update only this specific transaction
     transaction.returnDate = new Date();
     transaction.status = 'Returned';
     
-    // Calculate fine if overdue
-    if (transaction.returnDate > transaction.dueDate) {
-      const daysLate = Math.ceil((transaction.returnDate - transaction.dueDate) / (1000 * 60 * 60 * 24));
-      transaction.fine = daysLate * 10; // $10 per day
+    // Calculate fine if overdue (only for Students)
+    const member = await Member.findById(transaction.member);
+    if (member && member.membershipType !== 'Teacher') {
+      if (transaction.returnDate > transaction.dueDate) {
+        const daysLate = Math.ceil((transaction.returnDate - transaction.dueDate) / (1000 * 60 * 60 * 24));
+        transaction.fine = daysLate * (req.body.fineRate || 10);
+      }
     }
     
     // Return book to available
