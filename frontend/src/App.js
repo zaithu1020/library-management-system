@@ -65,6 +65,20 @@ function App() {
   // Fine report data
   const [fineReport, setFineReport] = useState([]);
 
+  // Calculate due date based on member type
+  const calculateDueDate = (memberType) => {
+    const today = new Date();
+    let daysToAdd = 3; // Default for students
+    
+    if (memberType === 'Teacher') {
+      daysToAdd = 30; // 30 days for teachers
+    }
+    
+    const dueDate = new Date(today);
+    dueDate.setDate(today.getDate() + daysToAdd);
+    return dueDate.toISOString().split('T')[0] + 'T17:00:00';
+  };
+
   // Fetch data when component loads
   useEffect(() => {
     if (isAuthenticated) {
@@ -258,7 +272,7 @@ function App() {
     return 0;
   };
 
-  // ========== PDF EXPORT FUNCTIONS WITH ARABIC SUPPORT ==========
+  // ========== PDF EXPORT FUNCTIONS ==========
   const exportToPDF = (data, columns, title, fileName) => {
     try {
       const doc = new jsPDF({
@@ -293,10 +307,6 @@ function App() {
           textColor: [255, 255, 255],
           fontStyle: 'bold',
           halign: 'center'
-        },
-        columnStyles: {
-          0: { cellWidth: 'auto' },
-          1: { cellWidth: 'auto' }
         }
       });
       
@@ -368,7 +378,7 @@ function App() {
   };
   // ========== END PDF EXPORT FUNCTIONS ==========
 
-  // ========== PRINT FUNCTIONS WITH FULL ARABIC SUPPORT ==========
+  // ========== PRINT FUNCTIONS ==========
   const printWithArabicSupport = (title, columns, data) => {
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
@@ -377,140 +387,18 @@ function App() {
         <head>
           <title>${title}</title>
           <meta charset="UTF-8">
-          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Scheherazade+New:wght@400;500;600;700&display=swap');
-            
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            
-            body { 
-              font-family: 'Noto Naskh Arabic', 'Amiri', 'Scheherazade New', 'Traditional Arabic', 'Arial', sans-serif; 
-              padding: 25px; 
-              margin: 0;
-              background: white;
-              font-size: 14px;
-              direction: ltr;
-              line-height: 1.5;
-            }
-            
-            .header {
-              display: flex;
-              align-items: center;
-              gap: 20px;
-              margin-bottom: 25px;
-              border-bottom: 2px solid #e0e0e0;
-              padding-bottom: 15px;
-            }
-            
-            .logo {
-              height: 70px;
-              width: auto;
-              object-fit: contain;
-            }
-            
-            .institute-info {
-              flex: 1;
-            }
-            
-            .institute-info h2 {
-              margin: 0;
-              color: #333;
-              font-size: 20px;
-              font-family: 'Noto Naskh Arabic', 'Amiri', sans-serif;
-            }
-            
-            .institute-info p {
-              margin: 5px 0;
-              color: #666;
-              font-size: 12px;
-            }
-            
-            h1 { 
-              color: #2196f3; 
-              font-size: 26px;
-              margin: 20px 0 10px;
-              border-bottom: 3px solid #2196f3;
-              padding-bottom: 10px;
-              font-family: 'Noto Naskh Arabic', 'Amiri', sans-serif;
-            }
-            
-            .date {
-              color: #666;
-              font-size: 12px;
-              margin-bottom: 20px;
-            }
-            
-            table { 
-              width: 100%; 
-              border-collapse: collapse; 
-              margin-top: 20px; 
-              font-family: 'Noto Naskh Arabic', 'Amiri', 'Scheherazade New', sans-serif;
-              font-size: 13px;
-            }
-            
-            th { 
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white; 
-              padding: 12px; 
-              text-align: left; 
-              font-weight: 600;
-              border: 1px solid #5a6fcf;
-            }
-            
-            td { 
-              padding: 10px; 
-              border: 1px solid #ddd;
-              text-align: left;
-              vertical-align: top;
-            }
-            
-            tr:nth-child(even) {
-              background: #f9f9f9;
-            }
-            
-            tr:hover { 
-              background: #f0f0f0; 
-            }
-            
-            .footer { 
-              margin-top: 30px; 
-              padding-top: 15px;
-              border-top: 2px solid #e0e0e0;
-              font-size: 12px; 
-              color: #666;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              flex-wrap: wrap;
-              gap: 10px;
-            }
-            
-            @media print {
-              body { margin: 0; padding: 15px; }
-              th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              .no-print { display: none; }
-              @page { margin: 1.5cm; }
-            }
+            body { font-family: 'Noto Naskh Arabic', 'Arial', sans-serif; padding: 20px; }
+            h1 { color: #2196f3; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th { background: #2196f3; color: white; padding: 12px; text-align: left; }
+            td { padding: 10px; border-bottom: 1px solid #ddd; }
+            .footer { margin-top: 20px; font-size: 12px; color: #666; }
           </style>
         </head>
         <body>
-          <div class="header">
-            <img src="${logo}" alt="Institute Logo" class="logo" onerror="this.style.display='none'" />
-            <div class="institute-info">
-              <h2>Assalihath Ladies Arabic College</h2>
-              <p>Bund Road, Sennal Gramam-01, Sammanthurai, Sri Lanka</p>
-              <p>Tel: 0672260343 / 0772920298 / 0772273925 | Email: https://assalihath.com</p>
-            </div>
-          </div>
-          
           <h1>${title}</h1>
-          <div class="date">Generated: ${new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Colombo' })}</div>
-          
+          <p>Generated: ${new Date().toLocaleString()}</p>
           <table>
             <thead>
               <tr>
@@ -520,16 +408,12 @@ function App() {
             <tbody>
               ${data.map(row => `
                 <tr>
-                  ${row.map(cell => `<td>${cell || '-'}</td>`).join('')}
+                  ${row.map(cell => `<td>${cell}</td>`).join('')}
                 </tr>
               `).join('')}
             </tbody>
           </table>
-          
-          <div class="footer">
-            <div>Total Records: ${data.length}</div>
-            <div>© ${new Date().getFullYear()} Assalihath Ladies Arabic College. All rights reserved.</div>
-          </div>
+          <div class="footer">Total Records: ${data.length}</div>
         </body>
       </html>
     `);
@@ -563,7 +447,7 @@ function App() {
   };
   // ========== END PRINT FUNCTIONS ==========
 
-  // ========== EXPORT TO EXCEL FUNCTIONS WITH ARABIC SUPPORT ==========
+  // ========== EXPORT TO EXCEL FUNCTIONS ==========
   const exportToExcel = (data, sheetName, fileName) => {
     try {
       const wb = XLSX.utils.book_new();
@@ -839,30 +723,44 @@ function App() {
   // ========== ISSUE BOOK FUNCTIONS ==========
   const issueBook = async (e) => {
     e.preventDefault();
+    
+    if (!formData.bookId || !formData.memberId) {
+      alert('Please select both a book and a member!');
+      return;
+    }
+    
     const selectedBook = books.find(b => b._id === formData.bookId);
     if (!selectedBook || selectedBook.available <= 0) {
       alert('This book is currently not available!');
       return;
     }
     
+    const selectedMember = members.find(m => m._id === formData.memberId);
+    if (!selectedMember) {
+      alert('Please select a valid member!');
+      return;
+    }
+    
     try {
       setLoading(true);
-      const issueDate = new Date();
-      const dueDate = new Date(issueDate);
-      dueDate.setDate(issueDate.getDate() + 3);
-      const dueDateTime = dueDate.toISOString().split('T')[0] + 'T17:00:00';
+      
+      const dueDateTime = calculateDueDate(selectedMember.membershipType);
+      const daysAdded = selectedMember.membershipType === 'Teacher' ? '30 days' : '3 days';
       
       await axios.post(`${API_URL}/transactions/issue`, {
         bookId: formData.bookId,
         memberId: formData.memberId,
         dueDate: dueDateTime
       });
-      alert('Book issued successfully! Due date: ' + dueDate.toLocaleDateString('ar-SA') + ' (3 days)');
+      
+      alert(`✅ Book issued successfully! Due date: ${daysAdded} from today`);
+      
       setFormData({});
-      fetchBooks();
-      fetchTransactions();
+      await fetchBooks();
+      await fetchTransactions();
+      
     } catch (error) {
-      alert('Error: ' + (error.response?.data?.message || error.message));
+      alert('❌ Error: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -1041,7 +939,6 @@ function App() {
           </div>
           <h2>Members List</h2>
           <div className="table-container">
-
             <table>
               <thead>
                 <tr>
@@ -1082,22 +979,42 @@ function App() {
         </div>
       )}
 
-      {/* ISSUE/RETURN TAB */}
+      {/* ISSUE/RETURN TAB - FIXED JSX */}
       {activeTab === 'issue' && (
         <div className="tab-content">
           <h2>Issue Book</h2>
           <form onSubmit={issueBook} className="add-form">
             <select value={formData.bookId || ''} onChange={(e) => setFormData({...formData, bookId: e.target.value})} required>
               <option value="">Select Book</option>
-              {books.filter(b => b.available > 0).map(book => (<option key={book._id} value={book._id}>{book.title} ({book.available} available)</option>))}
+              {books.filter(b => b.available > 0).map(book => (
+                <option key={book._id} value={book._id}>{book.title} ({book.available} available)</option>
+              ))}
             </select>
+            
             <select value={formData.memberId || ''} onChange={(e) => setFormData({...formData, memberId: e.target.value})} required>
               <option value="">Select Member</option>
-              {members.filter(m => m.status === 'Active').map(member => (<option key={member._id} value={member._id}>{member.name} ({member.memberId}) - {member.membershipType} - {member.indexNumber || member.employeeNumber || ''}</option>))}
+              {members.filter(m => m.status === 'Active').map(member => (
+                <option key={member._id} value={member._id}>
+                  {member.name} ({member.memberId}) - {member.membershipType}
+                </option>
+              ))}
             </select>
-            <div className="info-message"><p>Due date will be automatically set to 3 days from today</p></div>
+            
+            <div className="info-message">
+              {formData.memberId ? (
+                <p>📅 Due date: <strong>
+                  {members.find(m => m._id === formData.memberId)?.membershipType === 'Teacher' 
+                    ? '30 days' 
+                    : '3 days'}
+                </strong> from today</p>
+              ) : (
+                <p>📅 Select a member to see due date period</p>
+              )}
+            </div>
+            
             <button type="submit" disabled={loading}>Issue Book</button>
           </form>
+          
           <h2>Active Issues</h2>
           <div className="table-container">
             <table>
@@ -1120,13 +1037,13 @@ function App() {
                     const fine = calculateFine(t.dueDate, null, member?.membershipType);
                     return (
                       <tr key={t._id}>
-                        <td>{book?.title || 'Unknown'}</td>
-                        <td>{member?.name || 'Unknown'}</td>
-                        <td>{member?.membershipType || 'Unknown'}</td>
-                        <td>{new Date(t.issueDate).toLocaleDateString('ar-SA')}</td>
-                        <td className={fine > 0 ? 'overdue-date' : ''}>{new Date(t.dueDate).toLocaleDateString('ar-SA')}</td>
-                        <td>{fine > 0 ? <span className="fine-amount">Rs. {fine}</span> : 'No fine'}</td>
-                        <td><button className="return-btn" onClick={() => returnBook(t._id, t.dueDate, member?.membershipType)}>Return</button></td>
+                        <td>{book?.title || 'Unknown'} </td>
+                        <td>{member?.name || 'Unknown'} </td>
+                        <td>{member?.membershipType || 'Unknown'} </td>
+                        <td>{new Date(t.issueDate).toLocaleDateString('ar-SA')} </td>
+                        <td className={fine > 0 ? 'overdue-date' : ''}>{new Date(t.dueDate).toLocaleDateString('ar-SA')} </td>
+                        <td>{fine > 0 ? <span className="fine-amount">Rs. {fine}</span> : 'No fine'} </td>
+                        <td><button className="return-btn" onClick={() => returnBook(t._id, t.dueDate, member?.membershipType)}>Return</button> </td>
                       </tr>
                     );
                   }) : 
@@ -1157,12 +1074,12 @@ function App() {
                   const fine = calculateFine(t.dueDate, t.returnDate, member?.membershipType);
                   return (
                     <tr key={t._id}>
-                      <td>{book?.title || 'Unknown'}</td>
-                      <td>{member?.name || 'Unknown'}</td>
-                      <td>{member?.membershipType || 'Unknown'}</td>
-                      <td>{new Date(t.issueDate).toLocaleDateString('ar-SA')}</td>
-                      <td>{new Date(t.returnDate).toLocaleDateString('ar-SA')}</td>
-                      <td>{fine > 0 ? `Rs. ${fine}` : 'None'}</td>
+                      <td>{book?.title || 'Unknown'} </td>
+                      <td>{member?.name || 'Unknown'} </td>
+                      <td>{member?.membershipType || 'Unknown'} </td>
+                      <td>{new Date(t.issueDate).toLocaleDateString('ar-SA')} </td>
+                      <td>{new Date(t.returnDate).toLocaleDateString('ar-SA')} </td>
+                      <td>{fine > 0 ? `Rs. ${fine}` : 'None'} </td>
                     </tr>
                   );
                 })}
@@ -1231,7 +1148,7 @@ function App() {
           <div className="modal-content large">
             <h2>Manage Users</h2>
             <div className="add-user-form"><h3>Add New User</h3><form onSubmit={handleAddUser}><input type="text" placeholder="Username" value={newUserData.username} onChange={(e) => setNewUserData({...newUserData, username: e.target.value})} required /><input type="password" placeholder="Password" value={newUserData.password} onChange={(e) => setNewUserData({...newUserData, password: e.target.value})} required /><select value={newUserData.role} onChange={(e) => setNewUserData({...newUserData, role: e.target.value})}><option value="Librarian">Librarian</option><option value="Administrator">Administrator</option></select><button type="submit">Add User</button></form></div>
-            <div className="users-list"><h3>Current Users</h3><table><thead><tr><th>Username</th><th>Role</th><th>Actions</th></tr></thead><tbody>{users.map(user => (<tr key={user.id}><td>{user.username}</td><td>{user.role}</td><td>{users.length > 1 && <button className="delete-btn" onClick={() => handleDeleteUser(user.id)}>Delete</button>}</td></tr>))}</tbody></table></div>
+            <div className="users-list"><h3>Current Users</h3><table><thead><tr><th>Username</th><th>Role</th><th>Actions</th></tr></thead><tbody>{users.map(user => (<tr key={user.id}><td>{user.username}</td><td>{user.role} </td><td>{users.length > 1 && <button className="delete-btn" onClick={() => handleDeleteUser(user.id)}>Delete</button>}</td></tr>))}</tbody></table></div>
             <div className="modal-actions"><button className="btn-secondary" onClick={() => setShowUserManagement(false)}>Close</button></div>
           </div>
         </div>
