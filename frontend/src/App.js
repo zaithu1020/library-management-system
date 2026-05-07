@@ -68,10 +68,10 @@ function App() {
   // Calculate due date based on member type
   const calculateDueDate = (memberType) => {
     const today = new Date();
-    let daysToAdd = 3; // Default for students
+    let daysToAdd = 3;
     
     if (memberType === 'Teacher') {
-      daysToAdd = 30; // 30 days for teachers
+      daysToAdd = 30;
     }
     
     const dueDate = new Date(today);
@@ -88,7 +88,6 @@ function App() {
     }
   }, [isAuthenticated]);
 
-  // Check for overdue books on load
   useEffect(() => {
     if (transactions.length > 0) {
       const overdue = transactions.filter(t => 
@@ -101,7 +100,6 @@ function App() {
     }
   }, [transactions]);
 
-  // Calculate fine report
   useEffect(() => {
     if (transactions.length > 0) {
       const fines = transactions
@@ -272,6 +270,86 @@ function App() {
     return 0;
   };
 
+  // ========== ISSUE BOOK FUNCTION ==========
+  const issueBook = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.bookId || !formData.memberId) {
+      alert('Please select both a book and a member!');
+      return;
+    }
+    
+    const selectedBook = books.find(b => b._id === formData.bookId);
+    if (!selectedBook || selectedBook.available <= 0) {
+      alert('This book is currently not available!');
+      return;
+    }
+    
+    const selectedMember = members.find(m => m._id === formData.memberId);
+    if (!selectedMember) {
+      alert('Please select a valid member!');
+      return;
+    }
+    
+    // Check if member already has this book issued
+    const alreadyIssued = transactions.some(t => 
+      t.status === 'Issued' && 
+      t.book?._id === formData.bookId && 
+      t.member?._id === formData.memberId
+    );
+    
+    if (alreadyIssued) {
+      alert(`❌ ${selectedMember.name} already has "${selectedBook.title}" issued! Please return it first.`);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      const dueDateTime = calculateDueDate(selectedMember.membershipType);
+      const daysAdded = selectedMember.membershipType === 'Teacher' ? '30 days' : '3 days';
+      
+      await axios.post(`${API_URL}/transactions/issue`, {
+        bookId: formData.bookId,
+        memberId: formData.memberId,
+        dueDate: dueDateTime
+      });
+      
+      alert(`✅ Book issued successfully! Due date: ${daysAdded} from today`);
+      
+      setFormData({});
+      await fetchBooks();
+      await fetchTransactions();
+      
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || error.message;
+      alert('❌ Error: ' + errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ========== RETURN BOOK FUNCTION ==========
+  const returnBook = async (id, dueDate, memberType) => {
+    try {
+      setLoading(true);
+      const fine = calculateFine(dueDate, null, memberType);
+      if (fine > 0) {
+        const payFine = window.confirm(`Fine amount: Rs. ${fine}. Mark as paid?`);
+        if (!payFine) return;
+      }
+      await axios.post(`${API_URL}/transactions/return/${id}`);
+      alert(`Book returned successfully!${fine > 0 ? ` Fine paid: Rs. ${fine}` : ''}`);
+      fetchBooks();
+      fetchTransactions();
+    } catch (error) {
+      alert('Error: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+  // ========== END ISSUE/RETURN FUNCTIONS ==========
+
   // ========== PDF EXPORT FUNCTIONS ==========
   const exportToPDF = (data, columns, title, fileName) => {
     try {
@@ -397,7 +475,7 @@ function App() {
           </style>
         </head>
         <body>
-          <h1>${title}</h1>
+          <h1>Title</h1>
           <p>Generated: ${new Date().toLocaleString()}</p>
           <table>
             <thead>
@@ -510,86 +588,6 @@ function App() {
     exportToExcel(fineReport, 'Fine Report', `Fine_Report_${new Date().toLocaleDateString()}`);
   };
   // ========== END EXPORT FUNCTIONS ==========
-
-  // ========== BACKUP FUNCTIONS ==========
-  const createBackup = async () => {
-    try {
-      setLoading(true);
-      const backupData = {
-        date: new Date().toLocaleString(),
-        books: books,
-        members: members,
-        transactions: transactions,
-        settings: { fineRate: fineRate },
-        summary: {
-          totalBooks: books.length,
-          totalMembers: members.length,
-          totalTransactions: transactions.length,
-          issuedBooks: transactions.filter(t => t.status === 'Issued').length
-        }
-      };
-      
-      const jsonData = JSON.stringify(backupData, null, 2);
-      const blob = new Blob([jsonData], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `library_backup_${new Date().toISOString().slice(0,10)}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      const now = new Date();
-      setLastBackup({ date: now.toLocaleDateString(), time: now.toLocaleTimeString(), full: now.toLocaleString() });
-      alert('Backup created successfully!');
-    } catch (error) {
-      alert('Backup failed: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const restoreFromBackup = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        setLoading(true);
-        const backupData = JSON.parse(e.target.result);
-        const confirmRestore = window.confirm(
-          `WARNING: This will REPLACE all current data!\n\n` +
-          `Backup contains:\nBooks: ${backupData.books?.length || 0}\nMembers: ${backupData.members?.length || 0}\nTransactions: ${backupData.transactions?.length || 0}\n\nContinue?`
-        );
-        
-        if (!confirmRestore) return;
-        
-        if (backupData.books) {
-          for (const book of backupData.books) {
-            try { await axios.post(`${API_URL}/books`, book); } catch (e) {}
-          }
-        }
-        
-        if (backupData.members) {
-          for (const member of backupData.members) {
-            try { await axios.post(`${API_URL}/members`, member); } catch (e) {}
-          }
-        }
-        
-        if (backupData.settings?.fineRate) setFineRate(backupData.settings.fineRate);
-        await fetchBooks(); await fetchMembers(); await fetchTransactions();
-        alert('Restore completed successfully!');
-      } catch (error) {
-        alert('Restore failed: ' + error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    reader.readAsText(file);
-  };
-  // ========== END BACKUP FUNCTIONS ==========
 
   // ========== BOOK FUNCTIONS ==========
   const editBook = (book) => {
@@ -720,71 +718,85 @@ function App() {
   };
   // ========== END MEMBER FUNCTIONS ==========
 
-  // ========== ISSUE BOOK FUNCTIONS ==========
-  const issueBook = async (e) => {
-    e.preventDefault();
-    
-    if (!formData.bookId || !formData.memberId) {
-      alert('Please select both a book and a member!');
-      return;
-    }
-    
-    const selectedBook = books.find(b => b._id === formData.bookId);
-    if (!selectedBook || selectedBook.available <= 0) {
-      alert('This book is currently not available!');
-      return;
-    }
-    
-    const selectedMember = members.find(m => m._id === formData.memberId);
-    if (!selectedMember) {
-      alert('Please select a valid member!');
-      return;
-    }
-    
+  // ========== BACKUP FUNCTIONS ==========
+  const createBackup = async () => {
     try {
       setLoading(true);
+      const backupData = {
+        date: new Date().toLocaleString(),
+        books: books,
+        members: members,
+        transactions: transactions,
+        settings: { fineRate: fineRate },
+        summary: {
+          totalBooks: books.length,
+          totalMembers: members.length,
+          totalTransactions: transactions.length,
+          issuedBooks: transactions.filter(t => t.status === 'Issued').length
+        }
+      };
       
-      const dueDateTime = calculateDueDate(selectedMember.membershipType);
-      const daysAdded = selectedMember.membershipType === 'Teacher' ? '30 days' : '3 days';
+      const jsonData = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `library_backup_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       
-      await axios.post(`${API_URL}/transactions/issue`, {
-        bookId: formData.bookId,
-        memberId: formData.memberId,
-        dueDate: dueDateTime
-      });
-      
-      alert(`✅ Book issued successfully! Due date: ${daysAdded} from today`);
-      
-      setFormData({});
-      await fetchBooks();
-      await fetchTransactions();
-      
+      const now = new Date();
+      setLastBackup({ date: now.toLocaleDateString(), time: now.toLocaleTimeString(), full: now.toLocaleString() });
+      alert('Backup created successfully!');
     } catch (error) {
-      alert('❌ Error: ' + (error.response?.data?.message || error.message));
+      alert('Backup failed: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const returnBook = async (id, dueDate, memberType) => {
-    try {
-      setLoading(true);
-      const fine = calculateFine(dueDate, null, memberType);
-      if (fine > 0) {
-        const payFine = window.confirm(`Fine amount: Rs. ${fine}. Mark as paid?`);
-        if (!payFine) return;
+  const restoreFromBackup = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        setLoading(true);
+        const backupData = JSON.parse(e.target.result);
+        const confirmRestore = window.confirm(
+          `WARNING: This will REPLACE all current data!\n\n` +
+          `Backup contains:\nBooks: ${backupData.books?.length || 0}\nMembers: ${backupData.members?.length || 0}\nTransactions: ${backupData.transactions?.length || 0}\n\nContinue?`
+        );
+        
+        if (!confirmRestore) return;
+        
+        if (backupData.books) {
+          for (const book of backupData.books) {
+            try { await axios.post(`${API_URL}/books`, book); } catch (e) {}
+          }
+        }
+        
+        if (backupData.members) {
+          for (const member of backupData.members) {
+            try { await axios.post(`${API_URL}/members`, member); } catch (e) {}
+          }
+        }
+        
+        if (backupData.settings?.fineRate) setFineRate(backupData.settings.fineRate);
+        await fetchBooks(); await fetchMembers(); await fetchTransactions();
+        alert('Restore completed successfully!');
+      } catch (error) {
+        alert('Restore failed: ' + error.message);
+      } finally {
+        setLoading(false);
       }
-      await axios.post(`${API_URL}/transactions/return/${id}`);
-      alert(`Book returned successfully!${fine > 0 ? ` Fine paid: Rs. ${fine}` : ''}`);
-      fetchBooks();
-      fetchTransactions();
-    } catch (error) {
-      alert('Error: ' + (error.response?.data?.message || error.message));
-    } finally {
-      setLoading(false);
-    }
+    };
+    reader.readAsText(file);
   };
-  // ========== END ISSUE BOOK FUNCTIONS ==========
+  // ========== END BACKUP FUNCTIONS ==========
 
   // Login Page
   if (!isAuthenticated) {
@@ -979,7 +991,7 @@ function App() {
         </div>
       )}
 
-      {/* ISSUE/RETURN TAB - FIXED JSX */}
+      {/* ISSUE/RETURN TAB */}
       {activeTab === 'issue' && (
         <div className="tab-content">
           <h2>Issue Book</h2>
@@ -1037,13 +1049,13 @@ function App() {
                     const fine = calculateFine(t.dueDate, null, member?.membershipType);
                     return (
                       <tr key={t._id}>
-                        <td>{book?.title || 'Unknown'} </td>
-                        <td>{member?.name || 'Unknown'} </td>
-                        <td>{member?.membershipType || 'Unknown'} </td>
-                        <td>{new Date(t.issueDate).toLocaleDateString('ar-SA')} </td>
-                        <td className={fine > 0 ? 'overdue-date' : ''}>{new Date(t.dueDate).toLocaleDateString('ar-SA')} </td>
-                        <td>{fine > 0 ? <span className="fine-amount">Rs. {fine}</span> : 'No fine'} </td>
-                        <td><button className="return-btn" onClick={() => returnBook(t._id, t.dueDate, member?.membershipType)}>Return</button> </td>
+                        <td>{book?.title || 'Unknown'}</td>
+                        <td>{member?.name || 'Unknown'}</td>
+                        <td>{member?.membershipType || 'Unknown'}</td>
+                        <td>{new Date(t.issueDate).toLocaleDateString('ar-SA')}</td>
+                        <td className={fine > 0 ? 'overdue-date' : ''}>{new Date(t.dueDate).toLocaleDateString('ar-SA')}</td>
+                        <td>{fine > 0 ? <span className="fine-amount">Rs. {fine}</span> : 'No fine'}</td>
+                        <td><button className="return-btn" onClick={() => returnBook(t._id, t.dueDate, member?.membershipType)}>Return</button></td>
                       </tr>
                     );
                   }) : 
@@ -1074,12 +1086,12 @@ function App() {
                   const fine = calculateFine(t.dueDate, t.returnDate, member?.membershipType);
                   return (
                     <tr key={t._id}>
-                      <td>{book?.title || 'Unknown'} </td>
-                      <td>{member?.name || 'Unknown'} </td>
-                      <td>{member?.membershipType || 'Unknown'} </td>
-                      <td>{new Date(t.issueDate).toLocaleDateString('ar-SA')} </td>
-                      <td>{new Date(t.returnDate).toLocaleDateString('ar-SA')} </td>
-                      <td>{fine > 0 ? `Rs. ${fine}` : 'None'} </td>
+                      <td>{book?.title || 'Unknown'}</td>
+                      <td>{member?.name || 'Unknown'}</td>
+                      <td>{member?.membershipType || 'Unknown'}</td>
+                      <td>{new Date(t.issueDate).toLocaleDateString('ar-SA')}</td>
+                      <td>{new Date(t.returnDate).toLocaleDateString('ar-SA')}</td>
+                      <td>{fine > 0 ? `Rs. ${fine}` : 'None'}</td>
                     </tr>
                   );
                 })}

@@ -18,7 +18,19 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST issue book - FIXED: ALWAYS CREATE NEW TRANSACTION
+// GET transactions by member
+router.get('/member/:memberId', async (req, res) => {
+  try {
+    const transactions = await Transaction.find({ member: req.params.memberId })
+      .populate('book')
+      .sort({ issueDate: -1 });
+    res.json(transactions);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// POST issue book - WITH DUPLICATE CHECK
 router.post('/issue', async (req, res) => {
   try {
     const { bookId, memberId, dueDate } = req.body;
@@ -43,7 +55,20 @@ router.post('/issue', async (req, res) => {
       return res.status(400).json({ message: 'Member account is not active' });
     }
     
-    // ✅ FIX: CREATE A NEW TRANSACTION - NOT findOneAndUpdate
+    // CHECK IF MEMBER ALREADY HAS THIS BOOK ISSUED
+    const existingTransaction = await Transaction.findOne({
+      book: bookId,
+      member: memberId,
+      status: 'Issued'
+    });
+    
+    if (existingTransaction) {
+      return res.status(400).json({ 
+        message: 'This member already has this book issued! Please return it first.' 
+      });
+    }
+    
+    // Create new transaction
     const transaction = new Transaction({
       book: bookId,
       member: memberId,
@@ -57,10 +82,8 @@ router.post('/issue', async (req, res) => {
     book.available -= 1;
     await book.save();
     
-    // Save the new transaction
     const savedTransaction = await transaction.save();
     
-    // Populate and return
     const populatedTransaction = await Transaction.findById(savedTransaction._id)
       .populate('book')
       .populate('member');
@@ -72,7 +95,7 @@ router.post('/issue', async (req, res) => {
   }
 });
 
-// POST return book - UPDATES specific transaction
+// POST return book
 router.post('/return/:id', async (req, res) => {
   try {
     const transaction = await Transaction.findById(req.params.id);
@@ -84,11 +107,9 @@ router.post('/return/:id', async (req, res) => {
       return res.status(400).json({ message: 'Book already returned' });
     }
     
-    // Update this specific transaction
     transaction.returnDate = new Date();
     transaction.status = 'Returned';
     
-    // Calculate fine if overdue (Students only)
     const member = await Member.findById(transaction.member);
     if (member && member.membershipType !== 'Teacher') {
       if (transaction.returnDate > transaction.dueDate) {
@@ -97,7 +118,6 @@ router.post('/return/:id', async (req, res) => {
       }
     }
     
-    // Return book to available
     const book = await Book.findById(transaction.book);
     if (book) {
       book.available += 1;
